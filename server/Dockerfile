@@ -1,14 +1,28 @@
-FROM --platform=linux/amd64 eclipse-temurin:17-jdk-alpine AS build
-WORKDIR /workspace/app
+FROM --platform=linux/amd64 eclipse-temurin:17-jdk-alpine as builder
 
-COPY . /workspace/app
-RUN --mount=type=cache,target=/root/.gradle ./gradlew clean build
-RUN mkdir -p build/dependency && (cd build/dependency; jar -xf ../libs/*-SNAPSHOT.jar)
+ARG WORKSPACE=/workspace/app/server
+ARG BUILD_TARGET=${WORKSPACE}/build/libs
+WORKDIR ${WORKSPACE}
+
+COPY . .
+RUN ./gradlew clean bootJar
+
+WORKDIR ${BUILD_TARGET}
+RUN jar -xf *.jar
+
+
 
 FROM --platform=linux/amd64 eclipse-temurin:17-jdk-alpine
-VOLUME /tmp
-ARG DEPENDENCY=/workspace/app/build/dependency
-COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
-COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
-COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
-ENTRYPOINT ["java","-cp","app:app/lib/*","hello.Application"]
+
+ARG WORKSPACE=/workspace/app/server
+ARG BUILD_TARGET=${WORKSPACE}/build/libs
+ARG DEPLOY_PATH=${WORKSPACE}/deploy
+
+COPY --from=builder ${BUILD_TARGET}/org ${DEPLOY_PATH}/org
+COPY --from=builder ${BUILD_TARGET}/BOOT-INF/lib ${DEPLOY_PATH}/BOOT-INF/lib
+COPY --from=builder ${BUILD_TARGET}/META-INF ${DEPLOY_PATH}/META-INF
+COPY --from=builder ${BUILD_TARGET}/BOOT-INF/classes ${DEPLOY_PATH}/BOOT-INF/classes
+
+WORKDIR ${DEPLOY_PATH}
+
+ENTRYPOINT ["java","org.springframework.boot.loader.JarLauncher"]
