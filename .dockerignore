@@ -1,0 +1,17 @@
+HELP.md
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+**/build/
+*.jar
+**/.gradle
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+*.log
+.DS_Store
+logs/
